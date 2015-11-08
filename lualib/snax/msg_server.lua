@@ -1,5 +1,4 @@
 local skynet = require "skynet"
-require "skynet.manager"
 local gateserver = require "snax.gateserver"
 local netpack = require "netpack"
 local crypt = require "crypt"
@@ -71,7 +70,7 @@ Config for server.start:
 	conf.login_handler(uid, secret) -> subid : the function when a new user login, alloc a subid for it. (may call by login server)
 	conf.logout_handler(uid, subid) : the functon when a user logout. (may call by agent)
 	conf.kick_handler(uid, subid) : the functon when a user logout. (may call by login server)
-	conf.request_handler(username, session, msg, sz) : the function when recv a new request.
+	conf.request_handler(username, msg) : the function when recv a new request.
 	conf.register_handler(servername) : call when gate open
 	conf.disconnect_handler(username) : call when a connection disconnect (afk)
 ]]
@@ -203,8 +202,7 @@ function server.start(conf)
 		auth_handler(username)
 	end
 
-	local function auth(fd, addr, msg, sz)
-		local message = netpack.tostring(msg, sz)
+	local function auth(fd, addr, message)
 		local ok, result = pcall(do_auth, fd, message, addr)
 		if not ok then
 			skynet.error(result)
@@ -276,10 +274,8 @@ function server.start(conf)
 			if not ok then
 				skynet.error(result)
 				result = string.pack(">BI4", 0, session)
-				--result = "\0" .. session
 			else
 				result = result .. string.pack(">BI4", 1, session)
-				--result = result .. '\1' .. session
 			end
 
 			p[2] = string.pack(">s2",result)
@@ -306,8 +302,7 @@ function server.start(conf)
 		retire_response(u)
 	end
 
-	local function request(fd, msg, sz)
-		local message = netpack.tostring(msg, sz)
+	local function request(fd, message)
 		local ok, err = pcall(do_request, fd, message)
 		-- not atomic, may yield
 		if not ok then
@@ -320,16 +315,17 @@ function server.start(conf)
 
 	-- socket消息到来时回调，新连接的第一条消息是握手消息
 	function handler.message(fd, msg, sz)
+		local message = netpack.tostring(msg, sz)
 		local addr = handshake[fd]
 		if addr then
-			auth(fd,addr,msg,sz)
+			auth(fd,addr,message)
 			handshake[fd] = nil
 		else
-			request(fd, msg, sz)
+			request(fd, message)
 		end
 	end
 
-	return gateserver.start(handler)
+	gateserver.start(handler)
 end
 
 return server

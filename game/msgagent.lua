@@ -162,8 +162,8 @@ function CMD.push(source, name, payload)
 end
 
 local function msg_unpack(msg, sz)
-	local data = netpack.tostring(msg, sz, 0) -- 必须为0, 否则会产生double free
-	local netmsg = protobuf.decode("netmsg.NetMsg", data)
+	--local data = netpack.tostring(msg, sz, 0) -- 必须为0, 否则会产生double free
+	local netmsg = protobuf.decode("netmsg.NetMsg", msg, sz)
 
 	if not netmsg then
 		LOG_ERROR("msg_unpack error")

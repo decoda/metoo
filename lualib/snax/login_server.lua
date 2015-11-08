@@ -44,12 +44,14 @@ local function assert_socket(v, fd)
 	end
 end
 
+-- 写入2字节的头+text
 local function write(fd, text)
 	local sz = #text
 	local buf = string.char(sz >> 8) .. string.char(sz & 0xff) .. text
 	assert_socket(socket.write(fd, buf), fd)
 end
 
+-- 读取2字节头长度的数据
 local function read(fd)
 	local ret = assert_socket(socket.read(fd, 2), fd)
 	local sz = (string.byte(ret) << 8) + string.byte(ret, 2)
@@ -60,7 +62,6 @@ end
 
 local function launch_slave(auth_handler)
 	local function auth(fd, addr)
-		fd = assert(tonumber(fd))
 		LOG_INFO(string.format("connect from %s (fd = %d)", addr, fd))
 		socket.start(fd)
 
@@ -98,20 +99,26 @@ local function launch_slave(auth_handler)
 
 		local ok, server, uid = pcall(auth_handler, token)
 
-		socket.abandon(fd)
 		return ok, server, uid, secret
 	end
 
-	local function ret_pack(ok, err, ...)
+	local function ret_pack(fd, ok, err, ...)
+		socket.abandon(fd)
 		if ok then
-			skynet.ret(skynet.pack(err, ...))
+			skynet.retpack(err, ...)
+		elseif err == socket_error then
+			skynet.retpack(nil, "socket error")
 		else
-			error(err)
+			skynet.retpack(false, err)
 		end
 	end
 
-	skynet.dispatch("lua", function(_,_,...)
-		ret_pack(pcall(auth, ...))
+	skynet.dispatch("lua", function(_,_,fd,...)
+		if type(fd) ~= "number" then
+			skynet.retpack(false, "invalid fd type")
+		else
+			ret_pack(fd, pcall(auth, fd, ...))
+		end
 	end)
 end
 

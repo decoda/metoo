@@ -8,6 +8,9 @@ CFLAGS = -g -O2 -Wall
 
 LUA_CLIB = protobuf log
 
+LUA_BINDING = binding/lua53
+LUADIR = ./skynet/3rd/lua
+
 all : skynet
 
 skynet/Makefile :
@@ -24,11 +27,11 @@ $(LUA_CLIB_PATH) :
 
 
 $(LUA_CLIB_PATH)/protobuf.so : | $(LUA_CLIB_PATH)
-	cd lualib-src/pbc && $(MAKE) lib && cd binding/lua53 && $(MAKE) && cd ../../../.. && cp lualib-src/pbc/binding/lua53/protobuf.so $@
+	cd lualib-src/pbc && $(MAKE) lib && cd $(LUA_BINDING) && $(MAKE) && cd ../../../.. && cp lualib-src/pbc/$(LUA_BINDING)/protobuf.so $@
 
 $(LUA_CLIB_PATH)/log.so : lualib-src/lua-log.c | $(LUA_CLIB_PATH)
-	$(CC) $(CFLAGS) $(SHARED) $^ -o $@
+	$(CC) $(CFLAGS) $(SHARED) -I$(LUADIR) $^ -o $@
 
 clean :
-	cd skynet && $(MAKE) clean
+	rm -f $(LUA_CLIB_PATH)/*.so && cd skynet && $(MAKE) clean
 	

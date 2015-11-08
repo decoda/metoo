@@ -147,7 +147,7 @@ function CMD.login(token, sdkid, noclose)
 		crypt.base64encode(gameserver),
 		crypt.base64encode(result[2]),
 		index)
-	print("handshake=%s", handshake)
+	print("handshake", handshake)
 	local hmac = crypt.hmac64(crypt.hashkey(handshake), secret)
 
 	send_package(handshake .. ":" .. crypt.base64encode(hmac))
